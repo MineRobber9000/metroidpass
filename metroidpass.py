@@ -145,26 +145,38 @@ def get_bit(l,n,c=None,b=8):
 		n, c = get_bit_loc(n,b)
 	return (l[n]&(1<<c))==(1<<c)
 
-def bitfield(*bits):
-	ret = 0
-	for i in range(len(bits)):
-		if bits[i]: ret = ret | (1<<i)
+#def bitfield(*bits):
+#	ret = 0
+#	for i in range(len(bits)):
+#		if bits[i]: ret = ret | (1<<i)
+#	return ret
+
+#def bits_to_list(l,b=8):
+#	return [get_bit(l,n,None,b) for n in range(len(l)*b)]
+
+def regroup(l,ob=8,nb=8):
+	ret = []
+	bs = "".join(bin(x,ob) for x in l)
+	for i in range(0,len(bs),nb):
+		ret.append(int(bs[i:i+nb],2))
 	return ret
 
-def bits_to_list(l,b=8):
-	return [get_bit(l,n,None,b) for n in range(len(l)*b)]
-
-def regroup(l,nb=8):
-	ret = []
-	for i in range(0,len(l),nb):
-		ret.append(bitfield(*l[i:i+nb]))
+def bin(x,b=8):
+	ret = ""
+	for i in range((b-1),-1,-1):
+		ret += "1" if (x&(1<<i))==(1<<i) else "0"
 	return ret
 
 def six_to_eight(l):
-	return regroup(bits_to_list(l,6),8)
+	return regroup(l,6,8)
+#	bs = "".join(bin(x,6) for x in l)
+#	ret = []
+#	for i in range(0,len(bs),8):
+#		ret.append(int(bs[i:i+8],2))
+#	return ret
 
 def eight_to_six(l):
-	return regroup(bits_to_list(l,8),6)
+	return regroup(l,8,6)
 
 class MetroidPass:
 	ALPHABET = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz?-"
@@ -199,6 +211,13 @@ class MetroidPass:
 		ret.bytevals = mspd(bts[:16],ret.shift)
 		if password.startswith("NARPASSWORD00000"):
 			ret.is_debug = True
+			return ret
 		ret.calc_checksum()
 		if ret.checksum!=bts[17]:
 			print("WARNING: Given password is NOT valid!")
+		return ret
+
+	def __getattr__(self,k):
+		if k in bits.defines:
+			return get_bit(self.bytevals,bits.defines[k])
+		return object.__getattr__(self,k)
