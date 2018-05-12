@@ -137,12 +137,12 @@ class MetroidPasswordBitsEnum(enum.Enum):
 
 bits = MetroidPasswordBitsEnum()
 
-def get_bit_loc(n):
-	return (n//8,n%8)
+def get_bit_loc(n,b=8):
+	return (n//b,n%b)
 
-def get_bit(l,n,c=None):
+def get_bit(l,n,c=None,b=8):
 	if c is None:
-		n, c = get_bit_loc(n)
+		n, c = get_bit_loc(n,b)
 	return (l[n]&(1<<c))==(1<<c)
 
 def bitfield(*bits):
@@ -151,3 +151,54 @@ def bitfield(*bits):
 		if bits[i]: ret = ret | (1<<i)
 	return ret
 
+def bits_to_list(l,b=8):
+	return [get_bit(l,n,None,b) for n in range(len(l)*b)]
+
+def regroup(l,nb=8):
+	ret = []
+	for i in range(0,len(l),nb):
+		ret.append(bitfield(*l[i:i+nb]))
+	return ret
+
+def six_to_eight(l):
+	return regroup(bits_to_list(l,6),8)
+
+def eight_to_six(l):
+	return regroup(bits_to_list(l,8),6)
+
+class MetroidPass:
+	ALPHABET = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz?-"
+	def __init__(self,bytevals=None,shift=None,checksum=None):
+		if bytevals is None:
+			bytevals = [0 for x in range(16)]
+		if shift is None:
+			shift = 0
+		self.bytevals = bytevals
+		self.shift = 0
+		if checksum is None:
+			self.calc_checksum()
+		else:
+			self.checksum = checksum
+		self.is_debug = False
+
+	def calc_checksum(self):
+		cs = 0
+		for i in self.bytevals:
+			cs=(cs+i)%256
+		cs=(cs+self.shift)%256
+		self.checksum = cs
+
+	@classmethod
+	def decode(cls,password):
+		if len(password)<24:
+			password = (password+("0"*64))[:64]
+		bts = [cls.ALPHABET.index(x) for x in password]
+		ret = cls()
+		bts = six_to_eight(bts)
+		ret.shift = bts[16]
+		ret.bytevals = mspd(bts[:16],ret.shift)
+		if password.startswith("NARPASSWORD00000"):
+			ret.is_debug = True
+		ret.calc_checksum()
+		if ret.checksum!=bts[17]:
+			print("WARNING: Given password is NOT valid!")
