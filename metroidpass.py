@@ -20,7 +20,7 @@ def mspd(l,c):
 		return l
 	copy = l[0]
 	carry = 0
-	for i in range(16):
+	for i in range(15,-1,-1):
 		copy = l[0]
 		x,ca = bwr.rol(l[i],1)
 		x = x | carry
@@ -178,6 +178,22 @@ def six_to_eight(l):
 def eight_to_six(l):
 	return regroup(l,8,6)
 
+def is_iterable(o):
+	try:
+		m = iter(o)
+		return True
+	except:
+		return False
+
+def joinel(*args):
+	ret = []
+	for i in args:
+		if is_iterable(i):
+			ret.extend(x for x in i)
+		else:
+			ret.append(i)
+	return ret
+
 class MetroidPass:
 	ALPHABET = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz?-"
 	def __init__(self,bytevals=None,shift=None,checksum=None):
@@ -203,8 +219,11 @@ class MetroidPass:
 	@classmethod
 	def decode(cls,password):
 		if len(password)<24:
-			password = (password+("0"*64))[:64]
-		bts = [cls.ALPHABET.index(x) for x in password]
+			password = cls.pad(password)
+		bts = [cls.ALPHABET.index(x) if x!=" " else 255 for x in password]
+		for i in range(len(bts)):
+			if bts[i]==255:
+				bts[i-1]|=3 # 3 = 0b11
 		ret = cls()
 		bts = six_to_eight(bts)
 		ret.shift = bts[16]
@@ -216,6 +235,19 @@ class MetroidPass:
 		if ret.checksum!=bts[17]:
 			print("WARNING: Given password is NOT valid!")
 		return ret
+
+	def encode(self):
+		if self.is_debug:
+			return self.pad("NARPASSWORD00000")
+		self.calc_checksum()
+		passdata = joinel(self.bytevals,self.shift,self.checksum)
+		passdata = msp(passdata,self.shift)
+		passdata = eight_to_six(passdata)
+		return "".join(self.ALPHABET[x] for x in passdata)
+
+	@classmethod
+	def pad(cls,password,l=24):
+		return (password+(cls.ALPHABET[0]*l))[:l]
 
 	def __getattr__(self,k):
 		if k in bits.defines:
