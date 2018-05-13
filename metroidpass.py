@@ -233,7 +233,7 @@ class MetroidPass:
 			return ret
 		ret.calc_checksum()
 		if ret.checksum!=bts[17]:
-			print("WARNING: Given password is NOT valid!")
+			print("WARNING: Given password is NOT valid! ({!s}!={!s})".format(ret.checksum,bts[17]))
 		return ret
 
 	def encode(self):
@@ -250,6 +250,21 @@ class MetroidPass:
 		return (password+(cls.ALPHABET[0]*l))[:l]
 
 	def __getattr__(self,k):
+		shortcuts = dict(missiles=10)
 		if k in bits.defines:
 			return get_bit(self.bytevals,bits.defines[k])
+		elif k in shortcuts:
+			return self.bytevals[shortcuts[k]]
 		return object.__getattr__(self,k)
+
+	def __setattr__(self,k,v):
+		shortcuts = dict(missiles=10)
+		if k in bits.defines:
+			i,p = get_bit_loc(bits.defines[k])
+			if v:
+				self.bytevals[i]|=(1<<p)
+			else:
+				self.bytevals[i]&=~(1<<p)
+		elif k in shortcuts:
+			self.bytevals[shortcuts[k]] = v
+		return object.__setattr__(self,k,v)
