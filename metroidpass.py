@@ -245,6 +245,39 @@ class MetroidPass:
 		passdata = eight_to_six(passdata)
 		return "".join(self.ALPHABET[x] for x in passdata)
 
+	def start_in(self,loc=None):
+		if loc is None:
+			if p.reset:
+				return "reset"
+			starts_in = (self.start_in_norfair,self.start_in_kraid_lair,self.start_in_ridley_lair)
+			if starts_in==(False,False,False):
+				return "beginning"
+			elif starts_in==(True,False,False):
+				return "norfair"
+			elif starts_in==(False,True,False):
+				return "kraid_lair"
+			elif starts_in==(False,False,True):
+				return "ridley_lair"
+			elif starts_in==(True,True,False):
+				return "tourian"
+		else:
+			nor = False
+			kraid = False
+			ridley = False
+			if loc=="norfair":
+				nor = True
+			elif loc=="kraid_lair":
+				kraid = True
+			elif loc=="ridley_lair":
+				ridley = True
+			elif loc=="tourian":
+				nor = True
+				kraid = True
+			self.start_in_norfair = nor
+			self.start_in_kraid_lair = kraid
+			self.start_in_ridley_lair = ridley
+			self.reset = False
+
 	@classmethod
 	def pad(cls,password,l=24):
 		return (password+(cls.ALPHABET[0]*l))[:l]
